@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+# Query the metadata API
+
+# import libraries
+import requests
+import argparse
+import json
+
+import pprint
+import pdb
+
+def format_text(text):
+    try:
+        text = json.loads(text)
+    except ValueError:
+        pass
+    return text
+
+def generate_json(url):
+    output_dict = {}
+    valid_items = requests.get(url).text.splitlines()
+
+    for item in valid_items:
+        item_url = url + "/" + item
+
+        if item[-1] == "/":
+            output_dict[item[:-1]] = generate_json(item_url)
+        else:
+            text = requests.get(item_url).text
+            output_dict[item] = format_text(text)
+
+    return output_dict
+
+def main():
+    base_url = 'http://169.254.169.254/latest/meta-data'
+    parser = argparse.ArgumentParser("Query the AWS metadata API")
+    parser.add_argument(
+        "query",
+        help = "The item to be queried"
+    )
+
+    args = parser.parse_args()
+    if args.query:
+        metadata = generate_json(base_url)
+        if args.query in metadata:
+            output = {args.query: metadata.get(args.query)}
+            pprint.pprint(output)
+        else:
+            print("Error: query not found")
+
+if __name__ == "__main__":
+    main()
